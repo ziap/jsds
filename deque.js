@@ -28,6 +28,10 @@ export default class Deque {
     this.#len = len
   }
 
+  get len() {
+    return this.#len
+  }
+
   #grow() {
     this.#data = this.#data.concat(this.#data)
     this.#end += this.#cap
@@ -74,6 +78,10 @@ export default class Deque {
     this.#start = (this.#start + 1) & this.#cap_mask
     this.#len--
     return item
+  }
+
+  peek(idx) {
+    return this.#data[(this.#start + idx) & this.#cap_mask]
   }
 
   toArray() {

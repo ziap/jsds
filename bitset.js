@@ -1,5 +1,6 @@
 export default class BitSet {
   #cap = 32
+  #len = 0
   #bits = new Uint32Array(this.#cap)
 
   /**
@@ -11,6 +12,7 @@ export default class BitSet {
 
   clear() {
     this.#bits.fill(0)
+    this.#len = 0
   }
 
   /**
@@ -25,6 +27,7 @@ export default class BitSet {
       this.#bits.set(old_bits)
     }
 
+    this.#len = Math.max(this.#len, idx + 1)
     this.#bits[idx] |= 1 << (n & 31)
   }
 
@@ -33,7 +36,7 @@ export default class BitSet {
    */
   has(n) {
     const idx = n >> 5
-    return this.#cap > idx && !!((this.#bits[idx] >> (n & 31)) & 1)
+    return this.#len > idx && !!((this.#bits[idx] >> (n & 31)) & 1)
   }
 
   /**
@@ -41,13 +44,15 @@ export default class BitSet {
    */
   delete(n) {
     const idx = n >> 5
-    if (this.#cap <= idx) return
+    if (this.#len <= idx) return
     this.#bits[idx] &= ~(1 << (n & 31))
+
+     while (this.#bits[this.#len - 1] == 0) --this.#len
   }
 
   count() {
     let count = 0
-    for (let i = 0; i < this.#cap; ++i) {
+    for (let i = 0; i < this.#len; ++i) {
       let n = this.#bits[i]
       n = n - ((n >> 1) & 0x55555555)
       n = (n & 0x33333333) + ((n >> 2) & 0x33333333)
@@ -60,7 +65,7 @@ export default class BitSet {
     let result = new Uint32Array(this.count())
     let result_ptr = 0
 
-    for (let i = 0; i < this.#cap; ++i) {
+    for (let i = 0; i < this.#len; ++i) {
       let n = this.#bits[i]
       let shift = i << 5
 
