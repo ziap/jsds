@@ -9,7 +9,7 @@ export default class Deque {
   #len
 
   #cap = Deque.#INIT_SIZE
-  #cap_mask = Deque.#INIT_SIZE - 1
+  #cap_mask
 
   #data
 
@@ -18,10 +18,8 @@ export default class Deque {
    */
   constructor(data = []) {
     const len = data.length
-    while (this.#cap < len) {
-      this.#cap <<= 1
-      this.#cap_mask = (this.#cap_mask << 1) | 1
-    }
+    while (this.#cap < len) this.#cap <<= 1
+    this.#cap_mask = this.#cap - 1
 
     this.#data = data.concat(new Array(this.#cap - len))
     this.#end = len
