@@ -1,10 +1,10 @@
-# JSds - Small, efficient data structures in JavaScript
+# JSutils - Small, efficient JavaScript utilities
 
-JSds is a collection of JavaScript data structures that are not available in
-the standard library. It uses modern JavaScript and balances between
+JSutils is a collection of JavaScript utilities that are not available in
+the standard library. It uses modern JavaScript and tries to balance between
 performance, readability and versatility.
 
-## Included data structures
+## Included utilities
 
 ### Deque
 
