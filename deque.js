@@ -1,15 +1,15 @@
+const INIT_SIZE = 1 << 16
+
 /**
  * A generic, efficient double-ended queue (deque) implementation
  * @template T - The value type of the deque
  */
 export default class Deque {
-  static #INIT_SIZE = 1 << 16
-
   #start = 0
   #end
   #len
 
-  #cap = Deque.#INIT_SIZE
+  #cap
   #cap_mask
 
   #data
@@ -21,11 +21,11 @@ export default class Deque {
    */
   constructor(data = []) {
     const len = data.length
-    while (this.#cap < len) this.#cap <<= 1
+    this.#cap = 1 << (32 - Math.clz32(Math.max(len, INIT_SIZE) - 1))
     this.#cap_mask = this.#cap - 1
 
     this.#data = data.concat(new Array(this.#cap - len))
-    this.#end = len
+    this.#end = len & this.#cap_mask
     this.#len = len
   }
 
@@ -131,16 +131,8 @@ export default class Deque {
    */
   toArray() {
     if (this.#end != this.#start + this.#len) {
-      // Rotates the array so that the elements do not wrap
-      if (this.#len <= (this.#cap >> 1)) {
-        this.#data.copyWithin(this.#end + this.#cap - this.#start, 0, this.#end)
-        this.#data.copyWithin(this.#end, this.#start)
-        this.#start = this.#end
-        this.#end += this.#len
-      } else {
-        // TODO: Speed up this path
-        this.#grow()
-      }
+      const result = this.#data.slice(this.#start)
+      return result.concat(this.#data.slice(0, this.#end))
     }
     return this.#data.slice(this.#start, this.#end)
   }

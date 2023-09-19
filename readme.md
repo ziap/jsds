@@ -49,6 +49,36 @@ Todo:
 - Set operations (e.g. difference, union, intersection, equality,
 subset/superset relations)
 
+### WorkerPool
+
+Generic implementation of a worker thread pool in JavaScript for quick and easy
+parallelization. Internally uses a simpler implementation of [Deque](#deque).
+
+You can use this library to import any ES module and turns all exported
+functions into asynchronous, parallelized functions.
+
+```js
+// fib.js
+export function fib(n) {
+  return n < 2 ? 1 : fib(n - 1) + fib(n - 2)
+}
+```
+
+```js
+const [pool, destroy_pool] = await WorkerPool("./fib.js")
+
+import { fib } from "./fib.js"
+const input = new Array(8).fill(40)
+
+// ~1.2s on my machine
+const result_par = await Promise.all(input.map(pool.fib))
+
+// ~7.0s on my machine
+const result_seq = input.map(fib)
+
+destroy_pool() // terminate workers when they are no longer needed
+```
+
 ## Installation
 
 You can either:
