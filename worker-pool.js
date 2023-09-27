@@ -3,7 +3,7 @@ class Queue {
   #end = 0
   #len = 0
 
-  #cap = 1 << 16
+  #cap = 1 << 10
   #cap_mask = this.#cap - 1
 
   #data = new Array(this.#cap)
@@ -46,66 +46,74 @@ function CreateWorkers(worker_url, count) {
   return Promise.all(workers)
 }
 
-export default async function WorkerPool(module_path, worker_count = navigator.hardwareConcurrency) {
-  const url = new URL(module_path, import.meta.url).href
-  const worker_code = `
-    import * as module from "${url}"
-    
-    addEventListener("message", e => {
+const destroy_sym = Symbol("destroy")
+
+export default {
+  async create(module_path, worker_count = navigator.hardwareConcurrency) {
+    const url = new URL(module_path, import.meta.url).href
+    const worker_code = `
+      import * as module from "${url}"
+
+      addEventListener("message", e => {
       const { fn, inputs } = e.data
 
       Promise.resolve(module[fn](...inputs)).then(output => postMessage(output))
-    })
+      })
 
-    postMessage("ready")
-  `
+      postMessage("ready")
+    `
 
-  const worker_blob = new Blob([worker_code], { type: "text/javascript" })
-  const worker_url = URL.createObjectURL(worker_blob)
-  const workers = await CreateWorkers(worker_url, worker_count)
-  URL.revokeObjectURL(worker_url)
+    const worker_blob = new Blob([worker_code], { type: "text/javascript" })
+    const worker_url = URL.createObjectURL(worker_blob)
+    const workers = await CreateWorkers(worker_url, worker_count)
+    URL.revokeObjectURL(worker_url)
 
-  const free_workers = new Uint32Array(worker_count)
-  for (let i = 0; i < worker_count; ++i) free_workers[i] = i
-  let free_workers_top = worker_count
+    const free_workers = new Uint32Array(worker_count)
+    for (let i = 0; i < worker_count; ++i) free_workers[i] = i
+    let free_workers_top = worker_count
 
-  const processing = new Array(worker_count)
-  const task_queue = new Queue()
+    const processing = new Array(worker_count)
+    const task_queue = new Queue()
 
-  for (let i = 0; i < worker_count; ++i) {
-    workers[i].addEventListener("message", e => {
-      processing[i](e.data)
+    for (let i = 0; i < worker_count; ++i) {
+      workers[i].addEventListener("message", e => {
+        processing[i](e.data)
 
-      const task = task_queue.dequeue()
-      if (task != null) {
-        const [fn, inputs, resolve] = task
-        processing[i] = resolve
-        workers[i].postMessage({ fn, inputs })
-      } else {
-        free_workers[free_workers_top++] = i
-      }
-    })
+        const task = task_queue.dequeue()
+        if (task != null) {
+          const [fn, inputs, resolve] = task
+          processing[i] = resolve
+          workers[i].postMessage({ fn, inputs })
+        } else {
+          free_workers[free_workers_top++] = i
+        }
+      })
+    }
+
+    const pool = {}
+
+    for (const [key, value] of Object.entries(await import(url))) {
+      if (typeof value != "function") continue
+
+      pool[key] = (...inputs) => new Promise(resolve => {
+        if (free_workers_top) {
+          const worker = free_workers[--free_workers_top]
+          processing[worker] = resolve
+          workers[worker].postMessage({ fn: key, inputs })
+        } else {
+          task_queue.enqueue([key, inputs, resolve])
+        }
+      })
+    }
+
+    pool[destroy_sym] = () => {
+      for (let i = 0; i < worker_count; ++i) workers[i].terminate()
+    }
+
+    return pool
+  },
+
+  destroy(pool) {
+    pool[destroy_sym]()
   }
-  
-  let pool = {}
-
-  for (const [key, value] of Object.entries(await import(url))) {
-    if (typeof value != "function") continue
-
-    pool[key] = (...inputs) => new Promise(resolve => {
-      if (free_workers_top) {
-        const worker = free_workers[--free_workers_top]
-        processing[worker] = resolve
-        workers[worker].postMessage({ fn: key, inputs })
-      } else {
-        task_queue.enqueue([key, inputs, resolve])
-      }
-    })
-  }
-
-  function destroy_pool() {
-    for (let i = 0; i < worker_count; ++i) workers[i].terminate()
-  }
-  
-  return [pool, destroy_pool]
 }

@@ -65,7 +65,7 @@ export function fib(n) {
 ```
 
 ```js
-const [pool, destroy_pool] = await WorkerPool("./fib.js")
+const pool = await WorkerPool.create("./fib.js")
 
 import { fib } from "./fib.js"
 const input = new Array(8).fill(40)
@@ -76,7 +76,7 @@ const result_par = await Promise.all(input.map(pool.fib))
 // ~7.0s on my machine
 const result_seq = input.map(fib)
 
-destroy_pool() // terminate workers when they are no longer needed
+WorkerPool.destroy(pool) // terminate workers when they are no longer needed
 ```
 
 ## Installation
