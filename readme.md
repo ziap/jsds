@@ -79,12 +79,34 @@ const result_seq = input.map(fib)
 WorkerPool.destroy(pool) // terminate workers when they are no longer needed
 ```
 
+### Heap
+
+A low level set of functions to manipulate arrays like binary heaps. They can
+be used directly or for implementing priority queues. They're inspired by
+Python's [`heapq` module](https://docs.python.org/3/library/heapq.html). The
+default ordering is less. You can override the comparator to use them for max
+heaps or with custom objects.
+
+```js
+import * as heap from "./heap.js"
+const h = [56, 32, 68, 52, 20]
+heap.heapify(h)
+heap.push(h, heap.pop(h) * 2)
+heap.push(h, heap.pop(h) * 2)
+heap.push(h, heap.pop(h) * 2)
+console.log(h) // [52, 56, 68, 64, 80]
+
+const greater = (a, b) => a > b
+heap.heapify(h, greater)
+console.log(Array.from({length: 3}, () => heap.pop(h, greater))) // [80, 68, 64]
+```
+
 ## Installation
 
 You can either:
 
 - Download the files to your project
-- Import with URL (only for deno and browsers)
+- Import with Github raw file URL (only for deno and browsers)
 
 ## License
 
